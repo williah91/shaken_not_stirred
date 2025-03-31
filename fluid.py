@@ -7,6 +7,7 @@ import cmocean
 from matplotlib.cm import twilight
 import time
 
+
 class fluidsim:
     def __init__(self, grid_size=100, domain_size=20, diffusion_coef=0.01, viscosity=0.02, dt=0.1):
         self.grid_size = grid_size
@@ -134,14 +135,25 @@ class fluidsim:
         # sigma = np.sqrt(2 * diffusion_coef * self.dt) / self.dx
         # return gaussian_filter(field, sigma=sigma)
 
+        rolled_up = np.roll(field, 1, axis=0)
+        rolled_down = np.roll(field, -1, axis=0)
+        rolled_left = np.roll(field, 1, axis=1)
+        rolled_right = np.roll(field, -1, axis=1)
+
+        # Apply boundary conditions to prevent looping
+        rolled_up[0, :] = 0
+        rolled_down[-1, :] = 0
+        rolled_left[:, 0] = 0
+        rolled_right[:, -1] = 0
+
         laplacian = (
-            np.roll(field, 1, axis=0) + np.roll(field, -1, axis=0) +
-            np.roll(field, 1, axis=1) + np.roll(field, -1, axis=1) -
+            rolled_up + rolled_down +
+            rolled_left + rolled_right -
             4 * field
         ) / self.dx**2
 
         return field + diffusion_coef * self.dt * laplacian
-
+     
     def project_velocity(self):
         #Here's where we need to implement numerical methods. Essentially, 
         #we need to enforce that divu =0 which governs compression of a fluid
