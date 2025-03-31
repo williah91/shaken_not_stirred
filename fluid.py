@@ -9,7 +9,7 @@ import time
 
 
 class fluidsim:
-    def __init__(self, grid_size=100, domain_size=20, diffusion_coef=0.01, viscosity=0.02, dt=0.1, radius = 10):
+    def __init__(self, grid_size=100, domain_size=20, diffusion_coef=0.01, viscosity=0.02, dt=0.1, radius = 50):
         self.grid_size = grid_size
         self.domain_size = domain_size
         self.dx = domain_size / grid_size
@@ -31,7 +31,8 @@ class fluidsim:
         # current
         self.vortex(strength=1.0)
         # boundary radius
-        self.boundary_radius = radius
+        self.boundary_radius = radius #radius is in the arbitray units, same as gridsize
+        self.boundary = self.circular_boundary()
         print("Simulation initialized successfully.")
 
         #Ignore these notes if you prefer to decifer the code, but, 
@@ -46,7 +47,17 @@ class fluidsim:
         # with gaussian (although we could) like the other vortexes we defined.
         #This is a single vortex, at a specific point. This is like a birds eye view
         #of stirring the drink w a spoon. 
-        
+    
+    def circular_boundary(self):
+        coords = np.zeros((self.grid_size, self.grid_size))
+
+        center_x, center_y = self.grid_size // 2, self.grid_size // 2  # Find center points
+        y, x = np.ogrid[:self.grid_size, :self.grid_size]
+        dx, dy = (x - center_x), (y - center_y) # Scale to domain size
+        distance = np.sqrt(dx**2 + dy**2)
+        coords[distance <= self.boundary_radius] = 1  # Compare directly with boundary radius
+
+        return coords 
 
     def vortex(self, strength=1.0):
         #if self.time<10: #how long we stir for
@@ -121,7 +132,7 @@ class fluidsim:
         x_start = jgrid - self.u_vel * self.dt / self.dx #we are finding where it was before the time step
         y_start = igrid - self.v_vel * self.dt / self.dy
         coords = np.vstack((y_start.ravel(), x_start.ravel())) #this is the original position of the blood, we need to collapse the matrix for map coord to work. when we stack it, we get [y...] ontop of [x...] just a formatting thing for map.
-        new_advectionfactor = map_coordinates(field, coords, order=1, mode='nearest').reshape(self.grid_size, self.grid_size) #map coordinates is a method of basically for those values that are not whole integer for the grid poinst, it looks at the surrounding grid points that make up the block its in and then averages them out. 
+        new_advectionfactor = map_coordinates(field, coords, order=1, mode='reflect').reshape(self.grid_size, self.grid_size) #map coordinates is a method of basically for those values that are not whole integer for the grid poinst, it looks at the surrounding grid points that make up the block its in and then averages them out. 
         #self.advectedstep = new_advectionfactor * (1) #- self.degrade*self.dt)
         #I haven't advected any velocity field in here. 
 
@@ -137,6 +148,10 @@ class fluidsim:
 
         # sigma = np.sqrt(2 * diffusion_coef * self.dt) / self.dx
         # return gaussian_filter(field, sigma=sigma)
+
+        # find all the coordinates of the boundary
+        # Create a grid of zeros
+
 
         rolled_up = np.roll(field, 1, axis=0)
         rolled_down = np.roll(field, -1, axis=0)
@@ -154,6 +169,10 @@ class fluidsim:
             rolled_left + rolled_right -
             4 * field
         ) / self.dx**2
+
+        # apply boundary conditions
+        #laplacian = map_coordinates(laplacian, coords, order=1, mode='nearest').reshape(self.grid_size, self.grid_size) #map coordinates is a method of basically for those values that are not whole integer for the grid poinst, it looks at the surrounding grid points that make up the block its in and then averages them out. 
+
 
         return field + diffusion_coef * self.dt * laplacian
      
@@ -269,8 +288,9 @@ class fluidsim:
         
         ani = animation.FuncAnimation(fig, update, frames=len(conc_history), 
                                      interval=100, blit=True)
-        plt.tight_layout()
-        plt.show()
+        #plt.tight_layout()
+        #plt.show()
+        plt.close()
         
         return ani
 
