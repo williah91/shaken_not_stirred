@@ -155,6 +155,10 @@ class fluidsim:
             4 * field
         ) / self.dx**2
 
+        # apply boundary conditions
+        laplacian = map_coordinates(laplacian, coords, order=1, mode='nearest').reshape(self.grid_size, self.grid_size) #map coordinates is a method of basically for those values that are not whole integer for the grid poinst, it looks at the surrounding grid points that make up the block its in and then averages them out. 
+
+
         return field + diffusion_coef * self.dt * laplacian
      
     def project_velocity(self):
