@@ -9,7 +9,7 @@ import time
 
 
 class fluidsim:
-    def __init__(self, grid_size=100, domain_size=20, diffusion_coef=0.01, viscosity=0.02, dt=0.1):
+    def __init__(self, grid_size=100, domain_size=20, diffusion_coef=0.01, viscosity=0.02, dt=0.1, radius = 10):
         self.grid_size = grid_size
         self.domain_size = domain_size
         self.dx = domain_size / grid_size
@@ -30,6 +30,8 @@ class fluidsim:
         self.concentration = np.zeros((grid_size, grid_size))
         # current
         self.vortex(strength=1.0)
+        # boundary radius
+        self.boundary_radius = radius
         print("Simulation initialized successfully.")
 
         #Ignore these notes if you prefer to decifer the code, but, 
@@ -108,6 +110,7 @@ class fluidsim:
         self.v_vel[-1,:] = 0
         self.v_vel[:,0] = 0
         self.v_vel[:,-1] = 0
+
     def step(self, field):
         jgrid,igrid = np.meshgrid(np.arange(self.grid_size), np.arange(self.grid_size)) #creates a matrix for our plot
         #distance = vel . time, cells traversed is distance/cellsize 
@@ -196,7 +199,9 @@ class fluidsim:
         for step in range(steps):
             if step % 20 == 0:
                 print(f"Running step {step+1}/{steps}")            #I got this to just write this to ensure it was running. Because wasn't sure if was running. Can delete.
+                print(f"Total parts in grid: {np.sum(self.concentration)}")
             self.simulate_step()
+        
             if step % 5 == 0: #can be changes to whatever fram rate increment we wanna do
                 conc_history.append(self.concentration.copy())
                 vel_history.append((self.u_vel.copy(), self.v_vel.copy()))
