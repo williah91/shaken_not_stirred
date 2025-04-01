@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib import animation, cm
 # from scipy.ndimage import gaussian_filter
 from scipy.ndimage import map_coordinates
-import cmocean
 from matplotlib.cm import twilight
 import time
 
@@ -122,6 +121,49 @@ class fluidsim:
         self.v_vel[:,0] = 0
         self.v_vel[:,-1] = 0
 
+    def reflect_inside_circular_boundary(self, field):
+        radius = self.boundary_radius/self.grid_size*2
+
+        # Create coordinate grid
+        x = np.linspace(-1, 1, self.grid_size)
+        y = np.linspace(-1, 1, self.grid_size)
+        X, Y = np.meshgrid(x, y)
+
+        # Distance from center
+        distance = np.sqrt(X**2 + Y**2)
+
+        # Mask: outside the circular boundary
+        outside = distance > radius
+
+        # Initialize folded (reflected) field
+        reflected_field = np.zeros_like(field)
+
+        # Reflect positions of outside points
+        X_out = X[outside]
+        Y_out = Y[outside]
+        F_out = field[outside]
+
+        dx = X_out
+        dy = Y_out
+        r = np.sqrt(dx**2 + dy**2)
+        dx_ref = dx * (radius / r)**2
+        dy_ref = dy * (radius / r)**2
+        X_ref = dx_ref
+        Y_ref = dy_ref
+
+        # Convert reflected coords to grid indices
+        x_idx = np.clip(((X_ref + 1) / 2 * self.grid_size).astype(int), 0, self.grid_size - 1)
+        y_idx = np.clip(((Y_ref + 1) / 2 * self.grid_size).astype(int), 0, self.grid_size - 1)
+
+        # Accumulate reflected values into reflected_field
+        for xi, yi, val in zip(x_idx, y_idx, F_out):
+            reflected_field[yi, xi] += val
+
+        # Add original values inside the circle
+        reflected_field[~outside] += field[~outside]
+
+        return reflected_field
+
     def step(self, field):
         jgrid,igrid = np.meshgrid(np.arange(self.grid_size), np.arange(self.grid_size)) #creates a matrix for our plot
         #distance = vel . time, cells traversed is distance/cellsize 
@@ -132,7 +174,9 @@ class fluidsim:
         x_start = jgrid - self.u_vel * self.dt / self.dx #we are finding where it was before the time step
         y_start = igrid - self.v_vel * self.dt / self.dy
         coords = np.vstack((y_start.ravel(), x_start.ravel())) #this is the original position of the blood, we need to collapse the matrix for map coord to work. when we stack it, we get [y...] ontop of [x...] just a formatting thing for map.
+        
         new_advectionfactor = map_coordinates(field, coords, order=1, mode='reflect').reshape(self.grid_size, self.grid_size) #map coordinates is a method of basically for those values that are not whole integer for the grid poinst, it looks at the surrounding grid points that make up the block its in and then averages them out. 
+        # new_advectionfactor = self.reflect_inside_boundary(field)
         #self.advectedstep = new_advectionfactor * (1) #- self.degrade*self.dt)
         #I haven't advected any velocity field in here. 
 
@@ -173,8 +217,8 @@ class fluidsim:
         # apply boundary conditions
         #laplacian = map_coordinates(laplacian, coords, order=1, mode='nearest').reshape(self.grid_size, self.grid_size) #map coordinates is a method of basically for those values that are not whole integer for the grid poinst, it looks at the surrounding grid points that make up the block its in and then averages them out. 
 
-
-        return field + diffusion_coef * self.dt * laplacian
+        # return field + diffusion_coef * self.dt * laplacian
+        return self.reflect_inside_circular_boundary(field + diffusion_coef * self.dt * laplacian)
      
     def project_velocity(self):
         #Here's where we need to implement numerical methods. Essentially, 
