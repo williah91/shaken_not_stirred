@@ -41,7 +41,6 @@ class OceanBloodSimulation:
         print(f"Simulation initialized in '{self.mode}' mode.")
         # ... (print parameters for the selected mode)
 
-
     def apply_vortex(self, strength): 
         #only applied if stirring switched on
         #strength depends on time
@@ -78,10 +77,22 @@ class OceanBloodSimulation:
         self.initial_mass = np.sum(self.concentration) * self.dx * self.dy
         print(f"Added source: peak={volumeOfBlob:.2f}, std={std:.2f} (grid std {std_grid:.2f}).")
         print(f"Initial total mass: {self.initial_mass:.4f}")
+        
     #sets velocity at edges to 0, no-slip boundary condition
     def apply_boundary_conditions(self, u, v):
         u[0,:] = 0; u[-1,:] = 0; u[:,0] = 0; u[:,-1] = 0
         v[0,:] = 0; v[-1,:] = 0; v[:,0] = 0; v[:,-1] = 0
+
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+
+                x, y = self.x[j], self.y[i]
+
+                if np.sqrt(x**2 + y**2) >= self.grid_size / self.domain_size * 1.8: #radius is just inside grid boundary
+                    u[i, j] = 0
+                    v[i, j] = 0
+                    self.concentration[i,j] = 0
+                    
         return u, v
 
     def step_advection(self, field, u, v):
@@ -328,8 +339,9 @@ class OceanBloodSimulation:
         
         ani = animation.FuncAnimation(fig, update, frames=len(conc_history), 
                                      interval=100, blit=True)
-        plt.tight_layout()
-        plt.show()
+        # plt.tight_layout()
+        # plt.show()
+        plt.close()
         
         return ani
 
@@ -344,53 +356,3 @@ class OceanBloodSimulation:
                 writer=animation.PillowWriter(fps=fps); gif_filename=filename.replace('.mp4','.gif')
                 print(f"Saving GIF to {gif_filename}..."); ani.save(gif_filename,writer=writer); print(f"Saved GIF.")
             except Exception as e2: print(f"Failed GIF save: {e2}. Animation not saved.")
-
-
-if __name__ == "__main__":
-    common_params = {
-        'grid_size': 100, 'domain_size': 20, 'diffusion_coef': 0.002,
-        'viscosity': 0.02, 'dt': 0.1, 'pressure_iterations': 75
-    }
-    num_steps = 600
-    history_save_interval = 5 # Must match vis update time calc: time = frame * interval * dt
-
-    # uncommenting relevant block
-
-     # Stirring
-    #current_mode_params = { 'mode': 'stirring', 'stir_strength': 1.5 }
-    #output_filename = 'martini_stirring.mp4'
-
-    # Shake
-    current_mode_params = { 'mode': 'shaking', 'shake_accel_amplitude': 50.0, 'shake_frequency': 1.5 }
-    output_filename = 'martini_oscillating_shake.mp4'
-
-    # Random Eddies
-    # current_mode_params = { 'mode': 'random_eddies', 'random_amplitude': 1.5, 'random_correlation_sigma': 8.0 }
-    # output_filename = 'martini_random_eddies.mp4'
-
-    #Combined Shake (osc + eddies)
-    """current_mode_params = {
-        'mode': 'combined_shake',
-        'shake_accel_amplitude': 50.0,   # Amplitude of oscillation
-        'shake_frequency': 1.5,          # Fq of oscillation
-        'random_amplitude': 0.75,         # Amp of eddies
-        'random_correlation_sigma': 6.0  # Size of eddies
-    }"""
-    output_filename = 'martini_combined_shake.mp4'
-
-    print(f"{current_mode_params['mode'].upper()} SIMULATION ---")
-    sim = OceanBloodSimulation(**common_params, **current_mode_params)
-    sim.source(x_pos=0, y_pos=0, volumeOfBlob=1.0, std=2.8) # Martini ratio blob
-
-    conc_history, vel_history = sim.looptheSim(steps=num_steps)
-    print(f"Final avg concentration: {np.mean(conc_history[-1]):.6f}")
-    print(f"Final max concentration: {np.max(conc_history[-1]):.6f}")
-    # Do this for both the stirring run and the combined_shake run
-
-    print("\nVisualizing Results...")
-    try:
-        ani = sim.visualisequiver(conc_history, vel_history)
-        # sim.save_animation(ani, output_filename, fps=20)
-    except Exception as e:
-        print(f"Visualization error: {e}")
-        import traceback; traceback.print_exc()
