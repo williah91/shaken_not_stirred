@@ -57,11 +57,16 @@ class OceanBloodSimulation:
         u_vortex_temp = np.zeros((self.grid_size, self.grid_size)); v_vortex_temp = np.zeros((self.grid_size, self.grid_size))
         if self.mode != 'stirring': return u_vortex_temp, v_vortex_temp
         if self.time < 10: current_strength = strength
-        elif self.time >= 10 and self.time < 20: current_strength = strength * (1 - (self.time - 10) / 10)
+        elif self.time >= self.total_runtime/6 and self.time < 2*self.total_runtime/6:
+            current_strength = strength * (1 - (self.time - 10) / 10) * np.exp(-(self.time - 2*self.total_runtime/6)/ self.total_runtime)
         else: current_strength = 0
         if current_strength > 1e-9:
-            center_x, center_y = 0, 0; dX = self.X - center_x; dY = self.Y - center_y
-            r = np.sqrt(dX**2 + dY**2) + 1e-10; mask = r < 8; factor = np.exp(-r[mask]/4)
+            center_x, center_y = 0, 0
+            dX = self.X - center_x
+            dY = self.Y - center_y
+            r = np.sqrt(dX**2 + dY**2) + 1e-10
+            mask = r < self.domain_size / 2.2
+            factor = np.exp(-r[mask]/4)
             u_vortex_temp[mask] = -current_strength * dY[mask] / r[mask] * factor
             v_vortex_temp[mask] = current_strength * dX[mask] / r[mask] * factor
         return u_vortex_temp, v_vortex_temp
@@ -93,7 +98,7 @@ class OceanBloodSimulation:
             for j in range(self.grid_size):
                 x, y = self.x[j], self.y[i]
 
-                if np.sqrt(x**2 + y**2) >= 8:
+                if np.sqrt(x**2 + y**2) >= self.domain_size / 2.2:
                     u[i, j] = 0
                     v[i, j] = 0
                     self.concentration[i,j] = 0
@@ -280,6 +285,7 @@ class OceanBloodSimulation:
         self.time += self.dt
 
     def looptheSim(self, steps=200):
+        self.total_runtime = steps * self.dt
         conc_history = [self.concentration.copy()]; vel_history = [(self.u_vel.copy(), self.v_vel.copy())]
         print(f"Starting simulation ({self.mode}) for {steps} steps with dt={self.dt}...")
         start_time = time.time()
