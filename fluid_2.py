@@ -47,7 +47,6 @@ class OceanBloodSimulation:
         print(f"Simulation initialized in '{self.mode}' mode.")
         # ... (print parameters for the selected mode)
 
-
     def apply_vortex(self, strength): 
         #only applied if stirring switched on
         #strength depends on time
@@ -357,8 +356,9 @@ class OceanBloodSimulation:
         
         ani = animation.FuncAnimation(fig, update, frames=len(conc_history), 
                                      interval=100, blit=True)
-        plt.tight_layout()
-        plt.show()
+        # plt.tight_layout()
+        # plt.show()
+        plt.close()
         
         return ani
 
