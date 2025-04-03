@@ -7,6 +7,12 @@ import cmocean
 from matplotlib.cm import twilight
 import time
 
+"""
+Impose vel at 0,0 - in this coord system we center at 0
+Rotatiom, radiat velocity is 0, tangential velocity is velocity of the glass
+Impose these conditions, solve navier stokes in spherical polars 
+"""
+
 class OceanBloodSimulation:
     def __init__(self, grid_size=100, domain_size=20, diffusion_coef=0.002,
                  viscosity=0.02, dt=0.1, pressure_iterations=75,
@@ -78,6 +84,7 @@ class OceanBloodSimulation:
         self.initial_mass = np.sum(self.concentration) * self.dx * self.dy
         print(f"Added source: peak={volumeOfBlob:.2f}, std={std:.2f} (grid std {std_grid:.2f}).")
         print(f"Initial total mass: {self.initial_mass:.4f}")
+
     #sets velocity at edges to 0, no-slip boundary condition
     def apply_boundary_conditions(self, u, v):
         u[0,:] = 0; u[-1,:] = 0; u[:,0] = 0; u[:,-1] = 0
@@ -398,7 +405,7 @@ if __name__ == "__main__":
         'random_amplitude': 0.75,         # Amp of eddies
         'random_correlation_sigma': 6.0  # Size of eddies
     }
-    output_filename = 'martini_combined_shake.mp4'
+    #output_filename = 'martini_combined_shake.mp4'
 
     print(f"{current_mode_params['mode'].upper()} SIMULATION ---")
     sim = OceanBloodSimulation(**common_params, **current_mode_params)
